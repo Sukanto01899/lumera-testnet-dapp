@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+import "./globals.css";
+import { WalletProviders } from "@/providers/wallet-providers";
+
+import { Archivo_Black, Space_Grotesk } from "next/font/google";
+import AppShell from "@/components/layout/AppShell";
+
+const archivoBlack = Archivo_Black({
   subsets: ["latin"],
+  weight: "400",
+  variable: "--font-head",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const space = Space_Grotesk({
   subsets: ["latin"],
+  weight: "400",
+  variable: "--font-sans",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -24,10 +32,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${archivoBlack.variable} ${space.variable}`}>
+        <WalletProviders>
+          <AppShell>{children}</AppShell>
+        </WalletProviders>
       </body>
     </html>
   );

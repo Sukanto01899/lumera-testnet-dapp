@@ -1,0 +1,27 @@
+export const CHAIN_NAME =
+  process.env.NEXT_PUBLIC_CHAIN_NAME || "lumeratestnet";
+export const DENOM = process.env.NEXT_PUBLIC_DENOM || "ulume";
+export const CHAIN_ID =
+  process.env.NEXT_PUBLIC_CHAIN_ID || "lumera-testnet-2";
+export const RPC_ENDPOINT =
+  process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://rpc-t.lumera.nodestake.org";
+export const REST_AI_URL =
+  process.env.NEXT_PUBLIC_REST_AI_URL || "/api/cosmos";
+export const WALLET_CONNECT_PROJECTID =
+  process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECTID ||
+  "fd049c1154d0886fda615b1c2e08ee28";
+export const WALLET_CONNECT_RELAY_URL =
+  process.env.NEXT_PUBLIC_WALLET_CONNECT_RELAY_URL ||
+  "wss://relay.walletconnect.org";
+export const WALLET_CONNECT_NAME =
+  process.env.NEXT_PUBLIC_WALLET_CONNECT_NAME || "Lumera Hub";
+export const WALLET_CONNECT_DESCRIPTION =
+  process.env.NEXT_PUBLIC_WALLET_CONNECT_DESCRIPTION || "Lumera Hub";
+export const WALLET_CONNECT_URL =
+  process.env.NEXT_PUBLIC_WALLET_CONNECT_URL ||
+  "https://hub.testnet.lumera.io/";
+export const WALLET_CONNECT_ICON =
+  process.env.NEXT_PUBLIC_WALLET_CONNECT_ICON ||
+  "https://portal.testnet.lumera.io/assets/logo-5cb73fc7.png";
+export const SNAPI_URL =
+  process.env.NEXT_PUBLIC_SNAPI_URL || "http://localhost:3100";
