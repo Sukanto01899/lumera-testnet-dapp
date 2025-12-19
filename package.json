@@ -8,7 +8,7 @@
     "build": "cross-env TURBOPACK= next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "tunnel": "npx cloudflared tunnel --url http://localhost:3000"
+    "tunnel": "npx cloudflared tunnel --url http://localhost:3001"
   },
   "dependencies": {
     "@cosmjs/stargate": "^0.37.0",

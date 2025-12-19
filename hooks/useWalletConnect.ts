@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
-import { useChain } from "@interchain-kit/react";
+import { useChain, useChainWallet, useWalletManager } from "@interchain-kit/react";
+import { WalletState } from "@interchain-kit/core";
 import { SigningStargateClient } from "@cosmjs/stargate";
 import { AccountData, OfflineSigner } from "@cosmjs/proto-signing";
 import { Secp256k1 } from "@cosmjs/crypto";
@@ -21,14 +22,53 @@ const useWalletConnect = () => {
     openView,
     disconnect,
   } = useChain(CHAIN_NAME);
+  const walletManager = useWalletManager();
+  const keplrChainWallet = useChainWallet(CHAIN_NAME, "keplr-extension");
+  const leapChainWallet = useChainWallet(CHAIN_NAME, "leap-extension");
+  const wcChainWallet = useChainWallet(CHAIN_NAME, "WalletConnect");
   const { isModalOpen } = useSelector((state) => state.wallet);
   const triedAutoConnect = useRef(false);
 
+  const connectedWalletStore = walletManager.wallets?.find((w) => {
+    const state = walletManager.getChainWalletState(w.info.name, CHAIN_NAME);
+    return state?.walletState === WalletState.Connected;
+  });
+  const connectedChainWalletStore = connectedWalletStore?.getChainWalletStore(CHAIN_NAME);
+  const connectedWalletState = connectedWalletStore
+    ? walletManager.getChainWalletState(connectedWalletStore.info.name, CHAIN_NAME)
+    : undefined;
+
+  const resolvedWallet =
+    wallet ||
+    keplrChainWallet.wallet ||
+    leapChainWallet.wallet ||
+    wcChainWallet.wallet ||
+    connectedChainWalletStore;
+  const resolvedAddress =
+    address ||
+    keplrChainWallet.address ||
+    leapChainWallet.address ||
+    wcChainWallet.address ||
+    connectedWalletState?.account?.address ||
+    "";
+  const resolvedStatus =
+    status === WalletState.Connected
+      ? status
+      : keplrChainWallet.status ||
+        leapChainWallet.status ||
+        wcChainWallet.status ||
+        connectedWalletState?.walletState ||
+        WalletState.Disconnected;
+
   useEffect(() => {
-    dispatch(setAddress({ address: address || "" }));
-    dispatch(setConnected({ status: status === "Connected" }));
-    dispatch(setWalletName({ walletName: wallet?.info?.prettyName || "" }));
-  }, [address, status, wallet, dispatch]);
+    dispatch(setAddress({ address: resolvedAddress }));
+    dispatch(setConnected({ status: resolvedStatus === WalletState.Connected }));
+    dispatch(
+      setWalletName({
+        walletName: resolvedWallet?.info?.prettyName || connectedWalletStore?.info?.prettyName || "",
+      })
+    );
+  }, [resolvedAddress, resolvedStatus, resolvedWallet, dispatch]);
 
   // Try to auto-connect once when wallet is present but status not yet Connected
   useEffect(() => {
@@ -122,13 +162,14 @@ const useWalletConnect = () => {
 
   const getClient = async () => {
     const chainId = chain?.chainId;
-    if (!wallet || !chainId) {
+    const activeWallet = resolvedWallet;
+    if (!activeWallet || !chainId) {
       throw new Error("Please connect wallet before using");
     }
     const safeChainId: string = chainId;
     // Prefer direct signer to avoid pubkey format issues; fall back to amino signer.
     let baseSigner: OfflineSigner | null = null;
-    const walletAny = wallet as unknown as {
+    const walletAny = activeWallet as unknown as {
       getOfflineSignerDirect?: (chainId: string) => Promise<OfflineSigner>;
       getOfflineSigner: (chainId: string) => Promise<OfflineSigner>;
       getKey?: (chainId: string) => Promise<{ pubKey: Uint8Array }>;
@@ -198,12 +239,13 @@ const useWalletConnect = () => {
 
   const getOfflineSigner = async () => {
     const chainId = chain?.chainId;
-    if (!wallet || !chainId) {
+    const activeWallet = resolvedWallet;
+    if (!activeWallet || !chainId) {
       throw new Error("Please connect wallet before using");
     }
     const safeChainId: string = chainId;
     let baseSigner: OfflineSigner | null = null;
-    const walletAny = wallet as unknown as {
+    const walletAny = activeWallet as unknown as {
       getOfflineSignerDirect?: (chainId: string) => Promise<OfflineSigner>;
       getOfflineSigner: (chainId: string) => Promise<OfflineSigner>;
     };
@@ -229,21 +271,33 @@ const useWalletConnect = () => {
     // Always attempt the modal first (if provided), then fall back to explicit connect
     if (openView) {
       openView();
-    }
-    if (connect) {
+    } else if (connect) {
       await connect();
     }
   };
 
   return {
     isModalOpen,
-    isConnected: status === "Connected",
-    address: address || "",
-    walletName: wallet?.info?.prettyName || "",
-    status,
+    isConnected: resolvedStatus === WalletState.Connected,
+    address: resolvedAddress,
+    walletName: resolvedWallet?.info?.prettyName || "",
+    status: resolvedStatus,
     connect,
     openWalletModal,
-    disconnect,
+    disconnect: async () => {
+      if (resolvedWallet) {
+        return disconnect();
+      }
+      if (keplrChainWallet.status === WalletState.Connected) {
+        return keplrChainWallet.disconnect();
+      }
+      if (leapChainWallet.status === WalletState.Connected) {
+        return leapChainWallet.disconnect();
+      }
+      if (wcChainWallet.status === WalletState.Connected) {
+        return wcChainWallet.disconnect();
+      }
+    },
     getClient,
     getOfflineSigner,
   };
