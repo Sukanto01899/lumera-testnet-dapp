@@ -123,7 +123,7 @@ const useAccountInfo = () => {
 
       const delegations = delegationsRes.data?.delegation_responses ?? [];
       const rewards = rewardsRes.data?.rewards ?? [];
-      const unbonding = resUnbonding?.unbonding_responses ?? [];
+      const unbonding = resUnbonding.data?.unbonding_responses ?? [];
 
       const _accountInfo = {
         balances,
@@ -142,7 +142,7 @@ const useAccountInfo = () => {
         const readonlyClient = await StargateClient.connect(RPC_ENDPOINT);
         const balances = await readonlyClient.getAllBalances(address);
         const _accountInfo = {
-          balances,
+          balances: [...balances],
           delegations: [],
           rewards: [],
           unbonding: [],

@@ -103,7 +103,7 @@ const ClaimableRewards = ({
                 />
               </div>
               {error ? (
-                <Text as="span" className="text-destructive">
+                <Text as="p" className="text-destructive">
                   {error}
                 </Text>
               ) : null}

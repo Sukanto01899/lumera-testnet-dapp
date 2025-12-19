@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { useChain } from "@interchain-kit/react";
 import { SigningStargateClient } from "@cosmjs/stargate";
+import { AccountData, OfflineSigner } from "@cosmjs/proto-signing";
 import { Secp256k1 } from "@cosmjs/crypto";
 import { fromBase64, fromHex } from "@cosmjs/encoding";
 
@@ -19,7 +20,6 @@ const useWalletConnect = () => {
     connect,
     openView,
     disconnect,
-    openWalletModal: kitOpenModal,
   } = useChain(CHAIN_NAME);
   const { isModalOpen } = useSelector((state) => state.wallet);
   const triedAutoConnect = useRef(false);
@@ -27,7 +27,7 @@ const useWalletConnect = () => {
   useEffect(() => {
     dispatch(setAddress({ address: address || "" }));
     dispatch(setConnected({ status: status === "Connected" }));
-    dispatch(setWalletName({ walletName: wallet?.prettyName || "" }));
+    dispatch(setWalletName({ walletName: wallet?.info?.prettyName || "" }));
   }, [address, status, wallet, dispatch]);
 
   // Try to auto-connect once when wallet is present but status not yet Connected
@@ -59,16 +59,17 @@ const useWalletConnect = () => {
     };
   }, [connect]);
 
-  const wrapSignerWithCompressedPubkey = (signer: {
-    getAccounts?: () => Promise<{ address: string; pubkey?: Uint8Array | string | number[] }[]>;
-  }) => {
-    if (!signer?.getAccounts) return signer;
+  const wrapSignerWithCompressedPubkey = (signer: OfflineSigner | null | undefined) => {
+    if (!signer) return signer;
+    const signerObj = signer as OfflineSigner;
+    const getAccounts = signerObj.getAccounts?.bind(signerObj);
+    if (!getAccounts) return signer;
     return {
-      ...signer,
+      ...signerObj,
       getAccounts: async () => {
-        const accounts = await signer.getAccounts();
+        const accounts = await getAccounts();
         return accounts.map((acct) => {
-          const pk = acct?.pubkey;
+          const pk = (acct as { pubkey?: unknown })?.pubkey;
           if (!pk) return acct;
           // keplr can return Uint8Array or base64 string; WC may return hex
           let bytes: Uint8Array;
@@ -80,16 +81,18 @@ const useWalletConnect = () => {
               pk.startsWith("0x") || pk.length === 130
                 ? fromHex(pk.replace(/^0x/, ""))
                 : fromBase64(pk);
-          } else {
+          } else if (Array.isArray(pk)) {
             bytes = new Uint8Array(pk);
+          } else {
+            return acct;
           }
           if (bytes.length === 33 && (bytes[0] === 0x02 || bytes[0] === 0x03)) {
-            return { ...acct, pubkey: bytes };
+            return { ...acct, pubkey: bytes, algo: acct.algo ?? "secp256k1" } as AccountData;
           }
           if (bytes.length === 65 && bytes[0] === 0x04) {
             try {
               const compressed = Secp256k1.compressPubkey(bytes);
-              return { ...acct, pubkey: compressed };
+              return { ...acct, pubkey: compressed, algo: acct.algo ?? "secp256k1" } as AccountData;
             } catch {
               return acct;
             }
@@ -106,7 +109,7 @@ const useWalletConnect = () => {
                       return copy;
                     })();
               const compressed = Secp256k1.compressPubkey(prefixed);
-              return { ...acct, pubkey: compressed };
+              return { ...acct, pubkey: compressed, algo: acct.algo ?? "secp256k1" } as AccountData;
             } catch {
               return acct;
             }
@@ -118,40 +121,42 @@ const useWalletConnect = () => {
   };
 
   const getClient = async () => {
-    if (!wallet || !chain) {
+    const chainId = chain?.chainId;
+    if (!wallet || !chainId) {
       throw new Error("Please connect wallet before using");
     }
+    const safeChainId: string = chainId;
     // Prefer direct signer to avoid pubkey format issues; fall back to amino signer.
-    let baseSigner: unknown = null;
+    let baseSigner: OfflineSigner | null = null;
     const walletAny = wallet as unknown as {
-      getOfflineSignerDirect?: (chainId: string) => Promise<unknown>;
-      getOfflineSigner: (chainId: string) => Promise<unknown>;
+      getOfflineSignerDirect?: (chainId: string) => Promise<OfflineSigner>;
+      getOfflineSigner: (chainId: string) => Promise<OfflineSigner>;
       getKey?: (chainId: string) => Promise<{ pubKey: Uint8Array }>;
     };
 
     if (walletAny.getOfflineSignerDirect) {
       try {
-        baseSigner = await walletAny.getOfflineSignerDirect(chain.chainId);
+        baseSigner = await walletAny.getOfflineSignerDirect(safeChainId);
       } catch {
-        baseSigner = await walletAny.getOfflineSigner(chain.chainId);
+        baseSigner = await walletAny.getOfflineSigner(safeChainId);
       }
     } else {
-      baseSigner = await walletAny.getOfflineSigner(chain.chainId);
+      baseSigner = await walletAny.getOfflineSigner(safeChainId);
     }
     let offlineSigner = wrapSignerWithCompressedPubkey(baseSigner);
 
     // Some wallets expose getKey with compressed pubkey; prefer replacing if available
     if (walletAny.getKey) {
       try {
-        const keyInfo = await walletAny.getKey(chain.chainId);
+        const keyInfo = await walletAny.getKey(safeChainId);
         const pk = keyInfo?.pubKey;
         if (pk instanceof Uint8Array && pk.length >= 32) {
-          offlineSigner = wrapSignerWithCompressedPubkey({
-            ...(offlineSigner as Record<string, unknown>),
+          offlineSigner = {
+            ...(offlineSigner as OfflineSigner),
             getAccounts: async () => {
               const accounts =
-                (offlineSigner as { getAccounts?: () => Promise<{ address: string; pubkey?: Uint8Array }[]> })?.getAccounts
-                  ? await (offlineSigner as { getAccounts: () => Promise<{ address: string; pubkey?: Uint8Array }[]> }).getAccounts()
+                (offlineSigner as { getAccounts?: () => Promise<readonly AccountData[]> })?.getAccounts
+                  ? await (offlineSigner as { getAccounts: () => Promise<readonly AccountData[]> }).getAccounts()
                   : [];
               const compressed =
                 pk.length === 33 && (pk[0] === 0x02 || pk[0] === 0x03)
@@ -170,11 +175,15 @@ const useWalletConnect = () => {
                   ? Secp256k1.compressPubkey(Uint8Array.from([0x04, ...Array.from(pk)]))
                   : pk;
               if (!accounts.length) {
-                return [{ address: "", pubkey: compressed }];
+                return [{ address: "", pubkey: compressed, algo: "secp256k1" }] as AccountData[];
               }
-              return accounts.map((acct) => ({ ...acct, pubkey: compressed }));
+              return accounts.map((acct) => ({
+                ...acct,
+                pubkey: compressed,
+                algo: acct.algo ?? "secp256k1",
+              })) as AccountData[];
             },
-          });
+          } as OfflineSigner;
         }
       } catch {
         // ignore
@@ -188,23 +197,25 @@ const useWalletConnect = () => {
   };
 
   const getOfflineSigner = async () => {
-    if (!wallet || !chain) {
+    const chainId = chain?.chainId;
+    if (!wallet || !chainId) {
       throw new Error("Please connect wallet before using");
     }
-    let baseSigner: unknown = null;
+    const safeChainId: string = chainId;
+    let baseSigner: OfflineSigner | null = null;
     const walletAny = wallet as unknown as {
-      getOfflineSignerDirect?: (chainId: string) => Promise<unknown>;
-      getOfflineSigner: (chainId: string) => Promise<unknown>;
+      getOfflineSignerDirect?: (chainId: string) => Promise<OfflineSigner>;
+      getOfflineSigner: (chainId: string) => Promise<OfflineSigner>;
     };
 
     if (walletAny.getOfflineSignerDirect) {
       try {
-        baseSigner = await walletAny.getOfflineSignerDirect(chain.chainId);
+        baseSigner = await walletAny.getOfflineSignerDirect(safeChainId);
       } catch {
-        baseSigner = await walletAny.getOfflineSigner(chain.chainId);
+        baseSigner = await walletAny.getOfflineSigner(safeChainId);
       }
     } else {
-      baseSigner = await walletAny.getOfflineSigner(chain.chainId);
+      baseSigner = await walletAny.getOfflineSigner(safeChainId);
     }
     const offlineSigner = wrapSignerWithCompressedPubkey(baseSigner);
     if (!offlineSigner) {
@@ -216,9 +227,7 @@ const useWalletConnect = () => {
 
   const openWalletModal = async () => {
     // Always attempt the modal first (if provided), then fall back to explicit connect
-    if (kitOpenModal) {
-      kitOpenModal();
-    } else if (openView) {
+    if (openView) {
       openView();
     }
     if (connect) {
@@ -230,7 +239,7 @@ const useWalletConnect = () => {
     isModalOpen,
     isConnected: status === "Connected",
     address: address || "",
-    walletName: wallet?.prettyName || "",
+    walletName: wallet?.info?.prettyName || "",
     status,
     connect,
     openWalletModal,

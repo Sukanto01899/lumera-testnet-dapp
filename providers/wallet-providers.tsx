@@ -9,7 +9,6 @@ import {
   WALLET_CONNECT_PROJECTID,
   WALLET_CONNECT_RELAY_URL,
   WALLET_CONNECT_URL,
-  CHAIN_NAME,
 } from "@/constant/network";
 import store from "@/store";
 import { WCWallet } from "@interchain-kit/core";
@@ -46,7 +45,6 @@ export const WalletProviders = ({
         assetLists={[assetList]}
         wallets={[keplrWallet, leapWallet, walletConnect]}
         walletModal={() => <InterchainWalletModal />}
-        defaultChainName={CHAIN_NAME}
       >
         {children}
       </ChainProvider>

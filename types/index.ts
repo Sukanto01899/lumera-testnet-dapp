@@ -92,9 +92,21 @@ export interface IBlock {
   };
 }
 
+export type ProposalMessage = {
+  "@type": string;
+  authority?: string;
+  plan?: {
+    name: string;
+    time: string;
+    height: string;
+    info: string;
+    upgraded_client_state: string | null;
+  };
+};
+
 export interface IProposal {
   id: string;
-  messages: TMessage[];
+  messages: ProposalMessage[];
   status: string;
   final_tally_result: {
     yes_count: string;

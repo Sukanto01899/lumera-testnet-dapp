@@ -7,18 +7,7 @@ import { FEE_RATIO, FEE_VALUE, GAS_LIMIT, GAS_RATIO } from "@/constant";
 import { DENOM, REST_AI_URL } from "@/constant/network";
 import useWalletConnect from "@/hooks/useWalletConnect";
 import { Coin } from "@/hooks/useAccountInfo";
-
-type TMessage = {
-  "@type": string;
-  authority: string;
-  plan: {
-    name: string;
-    time: string;
-    height: string;
-    info: string;
-    upgraded_client_state: string | null;
-  };
-};
+import { IProposal } from "@/types";
 
 export const VOTE_OPTIONS = [
   {
@@ -44,29 +33,6 @@ export const broadcastModeOptions = [
   { name: "Async", value: "BROADCAST_MODE_ASYNC" },
   { name: "BROADCAST_MODE_BLOCK", value: "Block" },
 ];
-
-export interface IProposal {
-  id: string;
-  messages: TMessage[];
-  status: string;
-  final_tally_result: {
-    yes_count: string;
-    abstain_count: string;
-    no_count: string;
-    no_with_veto_count: string;
-  };
-  submit_time: string;
-  deposit_end_time: string;
-  total_deposit: Coin[];
-  voting_start_time: string;
-  voting_end_time: string;
-  metadata: string;
-  title: string;
-  summary: string;
-  proposer: string;
-  expedited: boolean;
-  failed_reason: string;
-}
 
 interface UseDepositOptions {
   customMemo?: string;

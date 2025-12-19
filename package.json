@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "prebuild": "rimraf .next",
+    "build": "cross-env TURBOPACK= next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "tunnel": "npx cloudflared tunnel --url http://localhost:3000"
@@ -43,6 +44,8 @@
     "@types/numeral": "^2.0.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^7.0.3",
+    "rimraf": "^5.0.10",
     "eslint": "^9",
     "eslint-config-next": "16.0.7",
     "tailwindcss": "^4",

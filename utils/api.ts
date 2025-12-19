@@ -11,10 +11,12 @@ const uploadHeaders = {
   Accept: "application/json",
 };
 
+type RequestBody = Record<string, unknown> | FormData;
+
 const customFetch = async <T = AxiosResponse>(
   url: string,
   method: string,
-  body: Record<string, unknown> = {},
+  body: RequestBody = {},
   isUpload = false
 ): Promise<T> => {
   const options: AxiosRequestConfig = {
@@ -23,10 +25,10 @@ const customFetch = async <T = AxiosResponse>(
     headers: isUpload ? uploadHeaders : headers,
   };
 
-  if (method === "GET" && body) {
+  if (method === "GET" && body && !(body instanceof FormData)) {
     options.params = body;
   } else if (method === "POST" || method === "PUT" || method === "DELETE") {
-    options.data = JSON.stringify(body);
+    options.data = body instanceof FormData ? body : JSON.stringify(body);
   }
 
   try {
@@ -63,11 +65,11 @@ const customFetch = async <T = AxiosResponse>(
 };
 
 export const get = (path: string) => customFetch(path, "GET");
-export const post = (path: string, body: object) =>
+export const post = (path: string, body: RequestBody) =>
   customFetch(path, "POST", body);
-export const put = (path: string, body: object) =>
+export const put = (path: string, body: RequestBody) =>
   customFetch(path, "PUT", body);
-export const remove = (path: string, body: object) =>
+export const remove = (path: string, body: RequestBody) =>
   customFetch(path, "DELETE", body);
-export const upload = (path: string, body: object) =>
-  customFetch(path, "post", body, true);
+export const upload = (path: string, body: FormData) =>
+  customFetch(path, "POST", body, true);
