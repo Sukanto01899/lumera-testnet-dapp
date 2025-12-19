@@ -8,6 +8,7 @@ import useWalletConnect from "@/hooks/useWalletConnect";
 import { usePathname } from "next/navigation";
 
 const Header = () => {
+  const HEADER_HEIGHT = 82;
   const pathname = usePathname();
   const { address, disconnect, openWalletModal, status } = useWalletConnect();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -50,7 +51,7 @@ const Header = () => {
 
   return (
     <header className="sticky top-0 left-0 right-0 z-50">
-      <div className="mx-auto max-w-[1100px] px-4 lg:px-6">
+      <div className="w-full px-4 lg:px-8">
         <div className="relative overflow-visible md:overflow-hidden rounded-none border-2 border-border bg-white/92 dark:bg-card/92 backdrop-blur retro-panel shadow-md z-[80]">
           <div className="relative flex items-center justify-between px-4 py-3 lg:px-6">
             {/* Left Logo + burger */}
@@ -143,9 +144,16 @@ const Header = () => {
             <>
               <div
                 className="fixed inset-0 z-[190] bg-black/40 backdrop-blur-sm md:hidden"
+                style={{ top: `${HEADER_HEIGHT}px`, height: `calc(100vh - ${HEADER_HEIGHT}px)` }}
                 onClick={() => setSidebarOpen(false)}
               />
-              <div className="fixed inset-0 left-0 z-[200] w-[85vw] max-w-[340px] border-r-2 border-border bg-white dark:bg-card shadow-lg md:hidden flex flex-col">
+              <div
+                className="fixed left-0 z-[200] w-[85vw] max-w-[340px] border-r-2 border-border bg-white dark:bg-card shadow-lg md:hidden flex flex-col"
+                style={{
+                  top: `${HEADER_HEIGHT}px`,
+                  height: `calc(100vh - ${HEADER_HEIGHT}px)`,
+                }}
+              >
                 <div className="p-4 border-b-2 border-border flex items-center justify-between">
                   <Text as="h4">Account</Text>
                   <button
