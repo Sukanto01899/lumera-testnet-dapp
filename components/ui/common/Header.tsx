@@ -68,7 +68,7 @@ const Header = () => {
               </button>
               <Link href="/" className="text-2xl font-black tracking-tight">
                 <Text as={"h2"} className="leading-none">
-                  Lumera Hub
+                  Lumera Lend
                 </Text>
               </Link>
               <span className="retro-chip text-xs uppercase tracking-wide hidden sm:inline-flex">
