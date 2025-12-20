@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Button } from "@/components/retroui/Button";
 import { Card } from "@/components/retroui/Card";
 import { Dialog } from "@/components/retroui/Dialog";
@@ -41,6 +43,7 @@ const Governance = ({
   selectedItem,
   setSelectedItem,
 }: GovernanceProps) => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
   return (
     <Card>
       <Card.Header>
@@ -82,7 +85,12 @@ const Governance = ({
 
       <Dialog
         open={!!selectedItem}
-        onOpenChange={(open) => (open ? undefined : setSelectedItem?.(null))}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowAdvanced(false);
+            setSelectedItem?.(null);
+          }
+        }}
       >
         <Dialog.Content size="md">
           <Dialog.Header>
@@ -112,35 +120,45 @@ const Governance = ({
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Gas</Label>
-                    <Input
-                      value={voteAdvanced?.gas ?? ""}
-                      onChange={(e) =>
-                        handleVoteAdvancedChange?.("gas", e.target.value)
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Fees</Label>
-                    <Input
-                      value={voteAdvanced?.fees ?? ""}
-                      onChange={(e) =>
-                        handleVoteAdvancedChange?.("fees", e.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label>Memo</Label>
-                  <Input
-                    value={voteAdvanced?.memo ?? ""}
-                    onChange={(e) =>
-                      handleVoteAdvancedChange?.("memo", e.target.value)
-                    }
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={showAdvanced}
+                    onChange={(e) => setShowAdvanced(e.target.checked)}
                   />
-                </div>
+                  Advanced
+                </label>
+                {showAdvanced ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label>Gas</Label>
+                      <Input
+                        value={voteAdvanced?.gas ?? ""}
+                        onChange={(e) =>
+                          handleVoteAdvancedChange?.("gas", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Fees</Label>
+                      <Input
+                        value={voteAdvanced?.fees ?? ""}
+                        onChange={(e) =>
+                          handleVoteAdvancedChange?.("fees", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Memo</Label>
+                      <Input
+                        value={voteAdvanced?.memo ?? ""}
+                        onChange={(e) =>
+                          handleVoteAdvancedChange?.("memo", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                ) : null}
                 {error ? (
                   <Text className="text-destructive">{error}</Text>
                 ) : null}

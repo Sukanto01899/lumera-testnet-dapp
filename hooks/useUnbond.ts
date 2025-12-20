@@ -192,16 +192,17 @@ const useUnbond = (options: UseDepositOptions = {}) => {
     setError("");
     setOpenModal(true);
     if (validator) {
+      const amountInLume = `${Number(amount) / RATE_VALUE}`;
       setOptionsAdvanced({
         ...optionsAdvanced,
         memo: customMemo
           ? `Unbond for the ${customMemo}`
           : options?.customMemo || "Lumera Hub",
         validator,
-        amount,
+        amount: amountInLume,
         validatorName: customMemo || options?.customMemo || "Lumera Hub",
       });
-      setAvailableAmount(amount);
+      setAvailableAmount(amountInLume);
     }
   };
 

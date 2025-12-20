@@ -9,6 +9,7 @@ import useUnbond from "@/hooks/useUnbond";
 import useWalletConnect from "@/hooks/useWalletConnect";
 import { useMemo } from "react";
 import { DENOM } from "@/constant/network";
+import { RATE_VALUE } from "@/constant";
 
 const StakePage = () => {
   const { address } = useWalletConnect();
@@ -30,9 +31,11 @@ const StakePage = () => {
     staking.fetchUnbondingDelegations();
   };
 
+  const availableBalanceLume = availableBalance / RATE_VALUE;
+
   const delegate = useDelegate({
     customMemo: "Stake",
-    availableAmount: `${availableBalance}`,
+    availableAmount: `${availableBalanceLume}`,
     callback: refreshAll,
   });
   const unbond = useUnbond({

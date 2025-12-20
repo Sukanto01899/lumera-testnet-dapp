@@ -38,6 +38,7 @@ const Wallet = ({
   const [isSendOpen, setSendOpen] = useState(false);
   const [isReceiveOpen, setReceiveOpen] = useState(false);
   const [copyLabel, setCopyLabel] = useState("Copy");
+  const [showDelegateAdvanced, setShowDelegateAdvanced] = useState(false);
 
   const { stacked, liquid } = useMemo(
     () => getPortfolioData(accountInfo),
@@ -134,11 +135,9 @@ const Wallet = ({
         </Card.Header>
         <Card.Content className="flex flex-wrap gap-3">
           <Dialog open={isReceiveOpen} onOpenChange={setReceiveOpen}>
-            <Dialog.Trigger asChild>
-              <Button variant="outline" onClick={() => setReceiveOpen(true)}>
-                Receive
-              </Button>
-            </Dialog.Trigger>
+            <Button variant="outline" onClick={() => setReceiveOpen(true)}>
+              Receive
+            </Button>
             <Dialog.Content size="md">
               <Dialog.Header>Receive LUMERA</Dialog.Header>
               <div className="space-y-3 px-4 py-2">
@@ -156,10 +155,16 @@ const Wallet = ({
             </Dialog.Content>
           </Dialog>
 
-          <Dialog open={isSendOpen} onOpenChange={setSendOpen}>
-            <Dialog.Trigger asChild>
-              <Button onClick={() => setSendOpen(true)}>Send Tokens</Button>
-            </Dialog.Trigger>
+          <Dialog
+            open={isSendOpen}
+            onOpenChange={(open) => {
+              setSendOpen(open);
+              if (!open) {
+                send.handleShowAdvancedChange(false);
+              }
+            }}
+          >
+            <Button onClick={() => setSendOpen(true)}>Send Tokens</Button>
             <Dialog.Content size="md">
               <Dialog.Header>Send</Dialog.Header>
               <div className="space-y-3 px-4 py-2">
@@ -190,13 +195,39 @@ const Wallet = ({
                   </div>
                   <div />
                 </div>
-                <div className="space-y-1">
-                  <Label>Memo (optional)</Label>
-                  <Input
-                    value={send.optionsAdvanced.memo}
-                    onChange={(e) => send.handleInputChange("memo", e.target.value)}
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={send.showAdvanced}
+                    onChange={(e) => send.handleShowAdvancedChange(e.target.checked)}
                   />
-                </div>
+                  Advanced
+                </label>
+                {send.showAdvanced ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label>Gas</Label>
+                      <Input
+                        value={send.optionsAdvanced.gas}
+                        onChange={(e) => send.handleInputChange("gas", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Fee</Label>
+                      <Input
+                        value={send.optionsAdvanced.fees}
+                        onChange={(e) => send.handleInputChange("fees", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Memo</Label>
+                      <Input
+                        value={send.optionsAdvanced.memo}
+                        onChange={(e) => send.handleInputChange("memo", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ) : null}
                 {send.error ? (
                   <Text className="text-destructive">{send.error}</Text>
                 ) : null}
@@ -230,12 +261,15 @@ const Wallet = ({
           <Dialog
             open={delegate.isOpenModal}
             onOpenChange={(open) =>
-              open ? delegate.handleOpenModal("") : delegate.handleCloseModal()
+              open
+                ? delegate.handleOpenModal("")
+                : (() => {
+                    setShowDelegateAdvanced(false);
+                    delegate.handleCloseModal();
+                  })()
             }
           >
-            <Dialog.Trigger asChild>
-              <Button onClick={() => delegate.handleOpenModal("")}>Delegate</Button>
-            </Dialog.Trigger>
+            <Button onClick={() => delegate.handleOpenModal("")}>Delegate</Button>
             <Dialog.Content size="md">
               <Dialog.Header>Delegate</Dialog.Header>
               <div className="space-y-3 px-4 py-2">
@@ -275,36 +309,47 @@ const Wallet = ({
                       LUME
                     </Text>
                   </div>
-                  <div className="space-y-1">
-                    <Label>Gas</Label>
-                    <Input
-                      value={delegate.optionsAdvanced.gas}
-                      onChange={(e) =>
-                        delegate.handleInputChange("gas", e.target.value)
-                      }
-                    />
-                  </div>
+                  <div />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Fee</Label>
-                    <Input
-                      value={delegate.optionsAdvanced.fees}
-                      onChange={(e) =>
-                        delegate.handleInputChange("fees", e.target.value)
-                      }
-                    />
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={showDelegateAdvanced}
+                    onChange={(e) => setShowDelegateAdvanced(e.target.checked)}
+                  />
+                  Advanced
+                </label>
+                {showDelegateAdvanced ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label>Gas</Label>
+                      <Input
+                        value={delegate.optionsAdvanced.gas}
+                        onChange={(e) =>
+                          delegate.handleInputChange("gas", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Fee</Label>
+                      <Input
+                        value={delegate.optionsAdvanced.fees}
+                        onChange={(e) =>
+                          delegate.handleInputChange("fees", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Memo</Label>
+                      <Input
+                        value={delegate.optionsAdvanced.memo}
+                        onChange={(e) =>
+                          delegate.handleInputChange("memo", e.target.value)
+                        }
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label>Memo</Label>
-                    <Input
-                      value={delegate.optionsAdvanced.memo}
-                      onChange={(e) =>
-                        delegate.handleInputChange("memo", e.target.value)
-                      }
-                    />
-                  </div>
-                </div>
+                ) : null}
                 {delegate.error ? (
                   <Text className="text-destructive">{delegate.error}</Text>
                 ) : null}

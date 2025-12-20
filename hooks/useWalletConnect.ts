@@ -20,7 +20,7 @@ const useWalletConnect = () => {
     status,
     connect,
     openView,
-    disconnect,
+    disconnect: chainDisconnect,
   } = useChain(CHAIN_NAME);
   const walletManager = useWalletManager();
   const keplrChainWallet = useChainWallet(CHAIN_NAME, "keplr-extension");
@@ -99,7 +99,49 @@ const useWalletConnect = () => {
     };
   }, [connect]);
 
-  const wrapSignerWithCompressedPubkey = (signer: OfflineSigner | null | undefined) => {
+  const normalizePubkey = (pk: unknown): Uint8Array | null => {
+    if (!pk) return null;
+    if (pk instanceof Uint8Array) return pk;
+    if (Array.isArray(pk)) return new Uint8Array(pk);
+    if (typeof pk !== "string") return null;
+
+    const cleaned = pk.startsWith("0x") ? pk.slice(2) : pk;
+    const isHex = /^[0-9a-fA-F]+$/.test(cleaned) && cleaned.length % 2 === 0;
+    if (isHex) {
+      return fromHex(cleaned);
+    }
+    try {
+      return fromBase64(pk);
+    } catch {
+      return null;
+    }
+  };
+
+  const isCompressedPubkey = (pk: Uint8Array): boolean =>
+    pk.length === 33 && (pk[0] === 0x02 || pk[0] === 0x03);
+
+  const compressPubkey = (pk: Uint8Array): Uint8Array => {
+    if (isCompressedPubkey(pk)) {
+      return pk;
+    }
+    if (pk.length === 65 && pk[0] === 0x04) {
+      return Secp256k1.compressPubkey(pk);
+    }
+    if (pk.length === 64) {
+      return Secp256k1.compressPubkey(Uint8Array.from([0x04, ...Array.from(pk)]));
+    }
+    if (pk.length === 65 && pk[0] !== 0x04) {
+      const copy = Uint8Array.from(pk);
+      copy[0] = 0x04;
+      return Secp256k1.compressPubkey(copy);
+    }
+    return pk;
+  };
+
+  const wrapSignerWithCompressedPubkey = (
+    signer: OfflineSigner | null | undefined,
+    fallbackPubkey?: Uint8Array | null
+  ) => {
     if (!signer) return signer;
     const signerObj = signer as OfflineSigner;
     const getAccounts = signerObj.getAccounts?.bind(signerObj);
@@ -109,50 +151,38 @@ const useWalletConnect = () => {
       getAccounts: async () => {
         const accounts = await getAccounts();
         return accounts.map((acct) => {
-          const pk = (acct as { pubkey?: unknown })?.pubkey;
-          if (!pk) return acct;
-          // keplr can return Uint8Array or base64 string; WC may return hex
-          let bytes: Uint8Array;
-          if (pk instanceof Uint8Array) {
-            bytes = pk;
-          } else if (typeof pk === "string") {
-            // handle base64 or hex
-            bytes =
-              pk.startsWith("0x") || pk.length === 130
-                ? fromHex(pk.replace(/^0x/, ""))
-                : fromBase64(pk);
-          } else if (Array.isArray(pk)) {
-            bytes = new Uint8Array(pk);
-          } else {
+          const pk = normalizePubkey((acct as { pubkey?: unknown })?.pubkey);
+          if (!pk) {
+            if (fallbackPubkey) {
+              const fallbackCompressed = compressPubkey(fallbackPubkey);
+              if (isCompressedPubkey(fallbackCompressed)) {
+                return {
+                  ...acct,
+                  pubkey: fallbackCompressed,
+                  algo: acct.algo ?? "secp256k1",
+                } as AccountData;
+              }
+            }
             return acct;
           }
-          if (bytes.length === 33 && (bytes[0] === 0x02 || bytes[0] === 0x03)) {
-            return { ...acct, pubkey: bytes, algo: acct.algo ?? "secp256k1" } as AccountData;
-          }
-          if (bytes.length === 65 && bytes[0] === 0x04) {
-            try {
-              const compressed = Secp256k1.compressPubkey(bytes);
-              return { ...acct, pubkey: compressed, algo: acct.algo ?? "secp256k1" } as AccountData;
-            } catch {
+          try {
+            let compressed = compressPubkey(pk);
+            if (!isCompressedPubkey(compressed) && fallbackPubkey) {
+              const fallbackCompressed = compressPubkey(fallbackPubkey);
+              if (isCompressedPubkey(fallbackCompressed)) {
+                compressed = fallbackCompressed;
+              }
+            }
+            if (!isCompressedPubkey(compressed)) {
               return acct;
             }
-          }
-          // If we receive 64 bytes (missing prefix) or 65 bytes without the 0x04 prefix, still try compressing
-          if (bytes.length === 64 || (bytes.length === 65 && bytes[0] !== 0x04)) {
-            try {
-              const prefixed =
-                bytes.length === 64
-                  ? Uint8Array.from([0x04, ...Array.from(bytes)])
-                  : (() => {
-                      const copy = Uint8Array.from(bytes);
-                      copy[0] = 0x04;
-                      return copy;
-                    })();
-              const compressed = Secp256k1.compressPubkey(prefixed);
-              return { ...acct, pubkey: compressed, algo: acct.algo ?? "secp256k1" } as AccountData;
-            } catch {
-              return acct;
-            }
+            return {
+              ...acct,
+              pubkey: compressed,
+              algo: acct.algo ?? "secp256k1",
+            } as AccountData;
+          } catch {
+            return acct;
           }
           return acct;
         });
@@ -184,14 +214,26 @@ const useWalletConnect = () => {
     } else {
       baseSigner = await walletAny.getOfflineSigner(safeChainId);
     }
-    let offlineSigner = wrapSignerWithCompressedPubkey(baseSigner);
+    let fallbackPubkey: Uint8Array | null = null;
+    try {
+      if (typeof window !== "undefined") {
+        const keplr = (window as unknown as { keplr?: { getKey: (chainId: string) => Promise<{ pubKey: unknown }> } }).keplr;
+        if (keplr?.getKey) {
+          const keplrKey = await keplr.getKey(safeChainId);
+          fallbackPubkey = normalizePubkey(keplrKey?.pubKey);
+        }
+      }
+    } catch {
+      // ignore keplr fallback errors
+    }
+    let offlineSigner = wrapSignerWithCompressedPubkey(baseSigner, fallbackPubkey);
 
     // Some wallets expose getKey with compressed pubkey; prefer replacing if available
     if (walletAny.getKey) {
       try {
         const keyInfo = await walletAny.getKey(safeChainId);
-        const pk = keyInfo?.pubKey;
-        if (pk instanceof Uint8Array && pk.length >= 32) {
+        const pk = normalizePubkey(keyInfo?.pubKey);
+        if (pk && pk.length >= 32) {
           offlineSigner = {
             ...(offlineSigner as OfflineSigner),
             getAccounts: async () => {
@@ -199,22 +241,16 @@ const useWalletConnect = () => {
                 (offlineSigner as { getAccounts?: () => Promise<readonly AccountData[]> })?.getAccounts
                   ? await (offlineSigner as { getAccounts: () => Promise<readonly AccountData[]> }).getAccounts()
                   : [];
-              const compressed =
-                pk.length === 33 && (pk[0] === 0x02 || pk[0] === 0x03)
-                  ? pk
-                  : pk.length === 65
-                  ? Secp256k1.compressPubkey(
-                      pk[0] === 0x04
-                        ? pk
-                        : (() => {
-                            const copy = Uint8Array.from(pk);
-                            copy[0] = 0x04;
-                            return copy;
-                          })()
-                    )
-                  : pk.length === 64
-                  ? Secp256k1.compressPubkey(Uint8Array.from([0x04, ...Array.from(pk)]))
-                  : pk;
+              let compressed = compressPubkey(pk);
+              if (!isCompressedPubkey(compressed) && fallbackPubkey) {
+                const fallbackCompressed = compressPubkey(fallbackPubkey);
+                if (isCompressedPubkey(fallbackCompressed)) {
+                  compressed = fallbackCompressed;
+                }
+              }
+              if (!isCompressedPubkey(compressed)) {
+                return accounts as AccountData[];
+              }
               if (!accounts.length) {
                 return [{ address: "", pubkey: compressed, algo: "secp256k1" }] as AccountData[];
               }
@@ -259,7 +295,19 @@ const useWalletConnect = () => {
     } else {
       baseSigner = await walletAny.getOfflineSigner(safeChainId);
     }
-    const offlineSigner = wrapSignerWithCompressedPubkey(baseSigner);
+    let fallbackPubkey: Uint8Array | null = null;
+    try {
+      if (typeof window !== "undefined") {
+        const keplr = (window as unknown as { keplr?: { getKey: (chainId: string) => Promise<{ pubKey: unknown }> } }).keplr;
+        if (keplr?.getKey) {
+          const keplrKey = await keplr.getKey(safeChainId);
+          fallbackPubkey = normalizePubkey(keplrKey?.pubKey);
+        }
+      }
+    } catch {
+      // ignore keplr fallback errors
+    }
+    const offlineSigner = wrapSignerWithCompressedPubkey(baseSigner, fallbackPubkey);
     if (!offlineSigner) {
       throw new Error("Please connect wallet before using");
     }
@@ -285,8 +333,11 @@ const useWalletConnect = () => {
     connect,
     openWalletModal,
     disconnect: async () => {
-      if (resolvedWallet) {
-        return disconnect();
+      if (connectedChainWalletStore?.disconnect) {
+        return connectedChainWalletStore.disconnect();
+      }
+      if (resolvedWallet && typeof (resolvedWallet as { disconnect?: () => Promise<void> }).disconnect === "function") {
+        return (resolvedWallet as { disconnect: () => Promise<void> }).disconnect();
       }
       if (keplrChainWallet.status === WalletState.Connected) {
         return keplrChainWallet.disconnect();
@@ -296,6 +347,9 @@ const useWalletConnect = () => {
       }
       if (wcChainWallet.status === WalletState.Connected) {
         return wcChainWallet.disconnect();
+      }
+      if (chainDisconnect) {
+        return chainDisconnect();
       }
     },
     getClient,

@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Button } from "@/components/retroui/Button";
 import { Card } from "@/components/retroui/Card";
 import { Dialog } from "@/components/retroui/Dialog";
@@ -40,6 +42,7 @@ const ClaimableRewards = ({
   onClaim,
   onCloseCongratulations,
 }: ClaimableRewardsProps) => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const formattedRewards = formatTokenDisplay(
     {
       amount: totalRewards,
@@ -60,12 +63,20 @@ const ClaimableRewards = ({
 
       <Card.Content className="space-y-3">
         <Text as="h4">{formattedRewards} LUME</Text>
-        <Dialog open={isOpen} onOpenChange={(open) => (open ? onOpen() : onClose())}>
-          <Dialog.Trigger asChild>
-            <Button disabled={Number(totalRewards) <= 0} onClick={onOpen}>
-              Claim All Rewards
-            </Button>
-          </Dialog.Trigger>
+        <Dialog
+          open={isOpen}
+          onOpenChange={(open) => {
+            if (open) {
+              onOpen();
+            } else {
+              setShowAdvanced(false);
+              onClose();
+            }
+          }}
+        >
+          <Button disabled={Number(totalRewards) <= 0} onClick={onOpen}>
+            Claim All Rewards
+          </Button>
           <Dialog.Content size="md">
             <Dialog.Header>Claim Rewards</Dialog.Header>
             <div className="space-y-3 px-4 py-2">
@@ -75,33 +86,43 @@ const ClaimableRewards = ({
                   {formattedRewards} {DENOM.replace("u", "").toUpperCase()}
                 </Text>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Gas</Label>
-                  <Input
-                    value={claimInfo.gas}
-                    onChange={(e) =>
-                      onChange?.("gas", e.target.value || claimInfo.gas)
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Fees</Label>
-                  <Input
-                    value={claimInfo.fees}
-                    onChange={(e) =>
-                      onChange?.("fees", e.target.value || claimInfo.fees)
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label>Memo</Label>
-                <Input
-                  value={claimInfo.memo}
-                  onChange={(e) => onChange?.("memo", e.target.value)}
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showAdvanced}
+                  onChange={(e) => setShowAdvanced(e.target.checked)}
                 />
-              </div>
+                Advanced
+              </label>
+              {showAdvanced ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label>Gas</Label>
+                    <Input
+                      value={claimInfo.gas}
+                      onChange={(e) =>
+                        onChange?.("gas", e.target.value || claimInfo.gas)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Fees</Label>
+                    <Input
+                      value={claimInfo.fees}
+                      onChange={(e) =>
+                        onChange?.("fees", e.target.value || claimInfo.fees)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Memo</Label>
+                    <Input
+                      value={claimInfo.memo}
+                      onChange={(e) => onChange?.("memo", e.target.value)}
+                    />
+                  </div>
+                </div>
+              ) : null}
               {error ? (
                 <Text as="p" className="text-destructive">
                   {error}

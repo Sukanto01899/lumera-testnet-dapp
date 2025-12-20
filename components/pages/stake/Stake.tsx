@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/retroui/Button";
 import { Card } from "@/components/retroui/Card";
@@ -8,6 +8,7 @@ import { Label } from "@/components/retroui/Label";
 import { Skeleton } from "@/components/retroui/Skeleton";
 import { Text } from "@/components/retroui/Text";
 import { DENOM } from "@/constant/network";
+import { RATE_VALUE } from "@/constant";
 import { formatTokenDisplay } from "@/lib/format";
 import { getPortfolioData } from "../dashboard/Dashboard";
 import { AccountInfoData } from "@/hooks/useAccountInfo";
@@ -38,6 +39,9 @@ const Stake = ({
     () => getPortfolioData(accountInfo),
     [accountInfo]
   );
+  const [showDelegateAdvanced, setShowDelegateAdvanced] = useState(false);
+  const [showUnbondAdvanced, setShowUnbondAdvanced] = useState(false);
+  const [showRedelegateAdvanced, setShowRedelegateAdvanced] = useState(false);
 
   const validatorNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -62,92 +66,121 @@ const Stake = ({
             Delegate to a validator and start earning rewards.
           </Card.Description>
         </Card.Header>
-        <Card.Content className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Validator</Label>
-              <select
-                className="w-full border-2 rounded px-3 py-2 bg-background"
-                value={delegate.optionsAdvanced.validator}
-                onChange={(e) =>
-                  delegate.handleInputChange("validator", e.target.value)
-                }
-              >
-                <option value="">Select a validator</option>
-                {delegate.validators.map((v) => (
-                  <option key={v.operator_address} value={v.operator_address}>
-                    {v.description?.moniker || v.operator_address}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label>Amount</Label>
-              <Input
-                type="number"
-                value={delegate.optionsAdvanced.amount}
-                onChange={(e) =>
-                  delegate.handleInputChange("amount", e.target.value)
-                }
-              />
-              <Text className="text-xs text-muted-foreground">
-                Liquid available:{" "}
-                {formatTokenDisplay(
-                  { amount: `${liquid}`, denom: DENOM },
-                  false
-                )}{" "}
-                LUME
-              </Text>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label>Gas</Label>
-              <Input
-                value={delegate.optionsAdvanced.gas}
-                onChange={(e) => delegate.handleInputChange("gas", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Fee</Label>
-              <Input
-                value={delegate.optionsAdvanced.fees}
-                onChange={(e) =>
-                  delegate.handleInputChange("fees", e.target.value)
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Memo</Label>
-              <Input
-                value={delegate.optionsAdvanced.memo}
-                onChange={(e) =>
-                  delegate.handleInputChange("memo", e.target.value)
-                }
-              />
-            </div>
-          </div>
-          {delegate.error ? (
-            <Text className="text-destructive">{delegate.error}</Text>
-          ) : null}
-          {delegate.transactionHash ? (
-            <div className="rounded border-2 border-green-500 p-3 bg-green-50 text-foreground">
-              <Text as="h6">Delegation submitted</Text>
-              <Text className="break-all text-sm">
-                Tx hash: {delegate.transactionHash}
-              </Text>
+        <Card.Content>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <div className="space-y-3">
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label>Validator</Label>
+                  <select
+                    className="w-full border-2 rounded px-3 py-2 bg-background"
+                    value={delegate.optionsAdvanced.validator}
+                    onChange={(e) =>
+                      delegate.handleInputChange("validator", e.target.value)
+                    }
+                  >
+                    <option value="">Select a validator</option>
+                    {delegate.validators.map((v) => (
+                      <option key={v.operator_address} value={v.operator_address}>
+                        {v.description?.moniker || v.operator_address}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Amount</Label>
+                  <Input
+                    type="number"
+                    placeholder="Enter amount"
+                    value={delegate.optionsAdvanced.amount}
+                    onChange={(e) =>
+                      delegate.handleInputChange("amount", e.target.value)
+                    }
+                  />
+                  <Text className="text-xs text-muted-foreground">
+                    Liquid available:{" "}
+                    {formatTokenDisplay(
+                      { amount: `${liquid}`, denom: DENOM },
+                      false
+                    )}{" "}
+                    LUME
+                  </Text>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showDelegateAdvanced}
+                  onChange={(e) => setShowDelegateAdvanced(e.target.checked)}
+                />
+                Advanced
+              </label>
+              {showDelegateAdvanced ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label>Gas</Label>
+                    <Input
+                      value={delegate.optionsAdvanced.gas}
+                      onChange={(e) =>
+                        delegate.handleInputChange("gas", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Fee</Label>
+                    <Input
+                      value={delegate.optionsAdvanced.fees}
+                      onChange={(e) =>
+                        delegate.handleInputChange("fees", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Memo</Label>
+                    <Input
+                      value={delegate.optionsAdvanced.memo}
+                      onChange={(e) =>
+                        delegate.handleInputChange("memo", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+              ) : null}
+              {delegate.error ? (
+                <Text className="text-destructive">{delegate.error}</Text>
+              ) : null}
+              {delegate.transactionHash ? (
+                <div className="rounded border-2 border-green-500 p-3 bg-green-50 text-foreground">
+                  <Text as="h6">Delegation submitted</Text>
+                  <Text className="break-all text-sm">
+                    Tx hash: {delegate.transactionHash}
+                  </Text>
+                  <Button
+                    size="sm"
+                    className="mt-2"
+                    onClick={delegate.handleCloseCongratulationsModal}
+                  >
+                    Close
+                  </Button>
+                </div>
+              ) : null}
               <Button
-                size="sm"
-                className="mt-2"
-                onClick={delegate.handleCloseCongratulationsModal}
+                onClick={delegate.handleSendClick}
+                disabled={delegate.isLoading}
               >
-                Close
+                {delegate.isLoading ? "Staking..." : "Stake"}
               </Button>
             </div>
-          ) : null}
-          <Button onClick={delegate.handleSendClick} disabled={delegate.isLoading}>
-            {delegate.isLoading ? "Staking..." : "Stake"}
-          </Button>
+            <div className="space-y-2 text-sm text-muted-foreground md:border-l-2 md:border-border md:pl-6">
+              <Text as="h6" className="text-foreground">
+                Staking Guidelines
+              </Text>
+              <Text>Pick a validator with strong uptime and low commission.</Text>
+              <Text>Keep a little LUME liquid for gas fees.</Text>
+              <Text>Unbonding locks funds for the unbonding period.</Text>
+              <Text>APR is variable and rewards can change.</Text>
+            </div>
+          </div>
         </Card.Content>
       </Card>
 
@@ -276,27 +309,54 @@ const Stake = ({
                 }
               />
               <Text className="text-xs text-muted-foreground">
-                Available: {unbond.availableAmount} uLUME
+                Available:{" "}
+                {formatTokenDisplay(
+                  {
+                    amount: `${Number(unbond.availableAmount || 0) * RATE_VALUE}`,
+                    denom: DENOM,
+                  },
+                  false
+                )}{" "}
+                LUME
               </Text>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Gas</Label>
-                <Input
-                  value={unbond.optionsAdvanced.gas}
-                  onChange={(e) => unbond.handleInputChange("gas", e.target.value)}
-                />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={showUnbondAdvanced}
+                onChange={(e) => setShowUnbondAdvanced(e.target.checked)}
+              />
+              Advanced
+            </label>
+            {showUnbondAdvanced ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label>Gas</Label>
+                  <Input
+                    value={unbond.optionsAdvanced.gas}
+                    onChange={(e) => unbond.handleInputChange("gas", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Fee</Label>
+                  <Input
+                    value={unbond.optionsAdvanced.fees}
+                    onChange={(e) =>
+                      unbond.handleInputChange("fees", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Memo</Label>
+                  <Input
+                    value={unbond.optionsAdvanced.memo}
+                    onChange={(e) =>
+                      unbond.handleInputChange("memo", e.target.value)
+                    }
+                  />
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label>Fee</Label>
-                <Input
-                  value={unbond.optionsAdvanced.fees}
-                  onChange={(e) =>
-                    unbond.handleInputChange("fees", e.target.value)
-                  }
-                />
-              </div>
-            </div>
+            ) : null}
             {unbond.error ? (
               <Text className="text-destructive">{unbond.error}</Text>
             ) : null}
@@ -363,29 +423,56 @@ const Stake = ({
                 }
               />
               <Text className="text-xs text-muted-foreground">
-                Available: {redelegate.availableAmount} uLUME
+                Available:{" "}
+                {formatTokenDisplay(
+                  {
+                    amount: `${Number(redelegate.availableAmount || 0) * RATE_VALUE}`,
+                    denom: DENOM,
+                  },
+                  false
+                )}{" "}
+                LUME
               </Text>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Gas</Label>
-                <Input
-                  value={redelegate.optionsAdvanced.gas}
-                  onChange={(e) =>
-                    redelegate.handleInputChange("gas", e.target.value)
-                  }
-                />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={showRedelegateAdvanced}
+                onChange={(e) => setShowRedelegateAdvanced(e.target.checked)}
+              />
+              Advanced
+            </label>
+            {showRedelegateAdvanced ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label>Gas</Label>
+                  <Input
+                    value={redelegate.optionsAdvanced.gas}
+                    onChange={(e) =>
+                      redelegate.handleInputChange("gas", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Fee</Label>
+                  <Input
+                    value={redelegate.optionsAdvanced.fees}
+                    onChange={(e) =>
+                      redelegate.handleInputChange("fees", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Memo</Label>
+                  <Input
+                    value={redelegate.optionsAdvanced.memo}
+                    onChange={(e) =>
+                      redelegate.handleInputChange("memo", e.target.value)
+                    }
+                  />
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label>Fee</Label>
-                <Input
-                  value={redelegate.optionsAdvanced.fees}
-                  onChange={(e) =>
-                    redelegate.handleInputChange("fees", e.target.value)
-                  }
-                />
-              </div>
-            </div>
+            ) : null}
             {redelegate.error ? (
               <Text className="text-destructive">{redelegate.error}</Text>
             ) : null}

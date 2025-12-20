@@ -230,16 +230,17 @@ const useRedelegate = (options: UseDepositOptions = {}) => {
   const handleOpenModal = (validator: string, amount: string, customMemo?: string) => {
     setOpenModal(true);
     if (validator) {
+      const amountInLume = `${Number(amount) / RATE_VALUE}`;
       setOptionsAdvanced({
         ...optionsAdvanced,
         memo: customMemo
           ? `Redelegate from ${customMemo}`
           : options?.customMemo || "Lumera Hub",
         sourceValidator: validator,
-        amount,
+        amount: amountInLume,
         validatorName: customMemo || options?.customMemo || "Lumera Hub",
       });
-      setAvailableAmount(amount);
+      setAvailableAmount(amountInLume);
     }
   };
 

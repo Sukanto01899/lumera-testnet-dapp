@@ -6,7 +6,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input: React.FC<InputProps> = ({
   type = "text",
-  placeholder = "Enter text",
+  placeholder,
   className = "",
   ...props
 }) => {

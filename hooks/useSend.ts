@@ -92,7 +92,6 @@ const useSend = (options: UseDepositOptions = {}) => {
       setError("Please connect wallet.");
       return;
     }
-    // fees and gas are auto-estimated; no user entry required
     setLoading(true);
     try {
       const client = await getClient();
@@ -109,13 +108,19 @@ const useSend = (options: UseDepositOptions = {}) => {
           ],
         }),
       };
-      const gasEstimate = await client.simulate(
-        optionsAdvanced.senderAddress,
-        [msg],
-        optionsAdvanced.memo
-      );
-      const gasLimit = `${Math.ceil(gasEstimate * GAS_RATIO)}`;
-      const estimatedFee = `${Math.ceil(Number(gasLimit) * FEE_RATIO)}`;
+      let gasLimit = optionsAdvanced.gas;
+      if (optionsAdvanced.gas === GAS_LIMIT) {
+        const gasEstimate = await client.simulate(
+          optionsAdvanced.senderAddress,
+          [msg],
+          optionsAdvanced.memo
+        );
+        gasLimit = `${Math.ceil(gasEstimate * GAS_RATIO)}`;
+      }
+      let estimatedFee = optionsAdvanced.fees;
+      if (optionsAdvanced.fees === FEE_VALUE) {
+        estimatedFee = `${Math.ceil(Number(gasLimit) * FEE_RATIO)}`;
+      }
       const fee = {
         amount: [{ denom: DENOM, amount: estimatedFee }],
         gas: gasLimit,

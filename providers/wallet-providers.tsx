@@ -12,6 +12,7 @@ import {
 } from "@/constant/network";
 import store from "@/store";
 import { WCWallet } from "@interchain-kit/core";
+import { cosmostationWallet } from "@interchain-kit/cosmostation-extension";
 import { keplrWallet } from "@interchain-kit/keplr-extension";
 import { leapWallet } from "@interchain-kit/leap-extension";
 import { ChainProvider, InterchainWalletModal } from "@interchain-kit/react";
@@ -43,7 +44,7 @@ export const WalletProviders = ({
       <ChainProvider
         chains={[chain]}
         assetLists={[assetList]}
-        wallets={[keplrWallet, leapWallet, walletConnect]}
+        wallets={[keplrWallet, leapWallet, cosmostationWallet, walletConnect]}
         walletModal={() => <InterchainWalletModal />}
       >
         {children}

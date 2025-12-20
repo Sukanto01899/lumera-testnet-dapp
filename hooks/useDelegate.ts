@@ -75,6 +75,13 @@ const useDelegate = (options: UseDepositOptions = {}) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options?.customMemo]);
 
+  useEffect(() => {
+    setOptionsAdvanced((prev) => ({
+      ...prev,
+      senderAddress: address,
+    }));
+  }, [address]);
+
   const resetData = () => {
     setShowAdvanced(false);
     setLoading(false);
